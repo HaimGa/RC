@@ -19,6 +19,8 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
+#include <string.h>
+#include <stdio.h>
 #include "main.h"
 #include "Adafruit_ADS1015.h"
 
@@ -68,11 +70,13 @@ static void MX_I2C1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+#define SIZE_OF_I2C_TX_BUFFER		4
+#define I2C_TX_TIMEOUT				1000
 //uint16_t ADS1015_readADC_SingleEnded(int fd, uint8_t channel)
 uint16_t ADS1015_readADC_SingleEnded(uint8_t channel)
 {
 uint32_t Tickstart;
+uint8_t I2C_Buffer[SIZE_OF_I2C_TX_BUFFER];
 uint16_t config = ADS1015_REG_CONFIG_CQUE_NONE    | // Disable the comparator (default val)
 				  ADS1015_REG_CONFIG_CLAT_NONLAT  | // Non-latching (default val)
 				  ADS1015_REG_CONFIG_CPOL_ACTVLOW | // Alert/Rdy active low   (default val)
@@ -106,16 +110,15 @@ uint16_t config = ADS1015_REG_CONFIG_CQUE_NONE    | // Disable the comparator (d
 	}
         // Set 'start single-conversion' bit
         config |= ADS1015_REG_CONFIG_OS_SINGLE;
+        I2C_Buffer[0] = ADS1015_REG_POINTER_CONFIG;
+        I2C_Buffer[1] = ((config >> 8) & 0xff);
+        I2C_Buffer[2] = ((config >> 0) & 0xff);
         Tickstart = HAL_GetTick();
-        HAL_I2C_Master_Transmit(&hi2c1, ADS1015_ADDRESS, &config, sizeof(config), 1000);
+        HAL_I2C_Master_Transmit(&hi2c1, ADS1015_ADDRESS, &I2C_Buffer[0], 3, I2C_TX_TIMEOUT);
         while ((HAL_GetTick() - Tickstart) < 10);
-        config = 0;
-        HAL_I2C_Master_Receive(&hi2c1, ADS1015_ADDRESS, &config, sizeof(config), 1000);
-//    	sprintf(pPrintStr, "A2D %d\n", config++);
-//    	HAL_UART_Transmit(&huart3, (uint8_t *)pPrintStr, strlen(pPrintStr), 10);
-//        wiringPiI2CWriteReg16(fd, ADS1015_REG_POINTER_CONFIG, ntohs(config));
-//        delay(ADS1015_CONVERSIONDELAY);
-//        return ntohs(wiringPiI2CReadReg16(fd, ADS1015_REG_POINTER_CONVERT) >> 4);
+        memset(&I2C_Buffer[0], 0, SIZE_OF_I2C_TX_BUFFER);
+        HAL_I2C_Master_Receive(&hi2c1, ADS1015_ADDRESS, &I2C_Buffer[0], 2, 1000);
+        config = ((I2C_Buffer[0] >> 8) | (I2C_Buffer[1] >> 0));
         return (config);
 }
 
@@ -143,7 +146,7 @@ uint16_t A2D_Data;
 	//HAL_I2C_Master_Transmit(&hi2c1, ADS1015_ADDRESS,
 //	ADS1015_readADC_SingleEnded(
 	A2D_Data = ADS1015_readADC_SingleEnded(A2D_Channel);
-	sprintf(pPrintStr, "A2D %d\n", A2D_Data);
+	sprintf(pPrintStr, "A2D %d\n\r", A2D_Data);
 	HAL_UART_Transmit(&huart3, (uint8_t *)pPrintStr, strlen(pPrintStr), 10);
 }
 
