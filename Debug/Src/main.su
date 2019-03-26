@@ -1,0 +1,12 @@
+main.c:501:13:MX_GPIO_Init	72	static
+main.c:77:10:ADS1015_readADC_SingleEnded	32	static
+main.c:144:6:TestUART	16	static
+main.c:160:6:TestI2C_A2D	8	static
+main.c:555:6:Error_Handler	8	static
+main.c:170:6:TestA2D	24	static
+main.c:431:13:MX_USART3_UART_Init	8	static
+main.c:466:13:MX_USB_OTG_FS_PCD_Init	8	static
+main.c:328:13:MX_ADC1_Init	8	static
+main.c:385:13:MX_I2C1_Init	8	static
+main.c:266:6:SystemClock_Config	216	static
+main.c:218:5:main	8	static

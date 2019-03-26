@@ -73,6 +73,7 @@ static void MX_I2C1_Init(void);
 #define SIZE_OF_I2C_TX_BUFFER		4
 #define I2C_TX_TIMEOUT				1000
 //uint16_t ADS1015_readADC_SingleEnded(int fd, uint8_t channel)
+HAL_StatusTypeDef		I2C_TransmissionResult;
 uint16_t ADS1015_readADC_SingleEnded(uint8_t channel)
 {
 uint32_t Tickstart;
@@ -109,17 +110,33 @@ uint16_t config = ADS1015_REG_CONFIG_CQUE_NONE    | // Disable the comparator (d
 		} break;
 	}
         // Set 'start single-conversion' bit
-        config |= ADS1015_REG_CONFIG_OS_SINGLE;
-        I2C_Buffer[0] = ADS1015_REG_POINTER_CONFIG;
-        I2C_Buffer[1] = ((config >> 8) & 0xff);
-        I2C_Buffer[2] = ((config >> 0) & 0xff);
-        Tickstart = HAL_GetTick();
-        HAL_I2C_Master_Transmit(&hi2c1, ADS1015_ADDRESS, &I2C_Buffer[0], 3, I2C_TX_TIMEOUT);
-        while ((HAL_GetTick() - Tickstart) < 10);
-        memset(&I2C_Buffer[0], 0, SIZE_OF_I2C_TX_BUFFER);
-        HAL_I2C_Master_Receive(&hi2c1, ADS1015_ADDRESS, &I2C_Buffer[0], 2, 1000);
-        config = ((I2C_Buffer[0] >> 8) | (I2C_Buffer[1] >> 0));
-        return (config);
+	config |= ADS1015_REG_CONFIG_OS_SINGLE;
+	I2C_Buffer[0] = ADS1015_REG_POINTER_CONFIG;
+	I2C_Buffer[1] = ((config >> 8) & 0xff);
+	I2C_Buffer[2] = ((config >> 0) & 0xff);
+	Tickstart = HAL_GetTick();
+	I2C_TransmissionResult = HAL_I2C_Master_Transmit(&hi2c1, ADS1015_ADDRESS, &I2C_Buffer[0], 3, I2C_TX_TIMEOUT);
+	if (HAL_OK == I2C_TransmissionResult)
+	{
+		while ((HAL_GetTick() - Tickstart) < 10);
+		memset(&I2C_Buffer[0], 0, SIZE_OF_I2C_TX_BUFFER);
+		I2C_TransmissionResult = HAL_I2C_Master_Receive(&hi2c1, ADS1015_ADDRESS, &I2C_Buffer[0], 2, 1000);
+		if (HAL_OK == I2C_TransmissionResult)
+		{
+			config = ((I2C_Buffer[0] >> 8) | (I2C_Buffer[1] >> 0));
+		}
+		else
+		{
+			sprintf(pPrintStr, "HAL_I2C_Master_Receive failed %d\n", (int) I2C_TransmissionResult);
+			HAL_UART_Transmit(&huart3, (uint8_t *)pPrintStr, strlen(pPrintStr), 10);
+		}
+	}
+	else
+	{
+		sprintf(pPrintStr, "HAL_I2C_Master_Transmit failed %d\n", (int) I2C_TransmissionResult);
+		HAL_UART_Transmit(&huart3, (uint8_t *)pPrintStr, strlen(pPrintStr), 10);
+	}
+	return (config);
 }
 
 
@@ -537,9 +554,12 @@ static void MX_GPIO_Init(void)
   */
 void Error_Handler(void)
 {
+static uint32_t	Error_HandlerCo = 0;
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-
+	sprintf(pPrintStr, "[%6d]Error_Handler\n\r", Error_HandlerCo++);
+	HAL_UART_Transmit(&huart3, (uint8_t *)pPrintStr, strlen(pPrintStr), 10);
+	while (1);
   /* USER CODE END Error_Handler_Debug */
 }
 
